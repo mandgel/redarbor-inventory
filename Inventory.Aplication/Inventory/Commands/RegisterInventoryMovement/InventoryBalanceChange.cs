@@ -8,4 +8,5 @@ public sealed record InventoryBalanceChange
 {
     public required Guid ProductId { get; init; }
     public required decimal QuantityChange { get; init; }
+    public required bool PreventNegativeStock { get; init; }
 }

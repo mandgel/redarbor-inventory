@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
 
-public interface IInventoryBalanceStore
+public sealed record InventoryBalanceChangeResult
 {
-    Task<InventoryBalanceChangeResult> ApplyMovementAsync(
-        InventoryBalanceChange change,
-        CancellationToken cancellationToken);
+    public required bool Applied { get; init; }
+    public decimal? CurrentStock { get; init; }
 }

@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
 
-public interface IInventoryBalanceStore
+public sealed class InsufficientStockException : Exception
 {
-    Task<InventoryBalanceChangeResult> ApplyMovementAsync(
-        InventoryBalanceChange change,
-        CancellationToken cancellationToken);
+    public InsufficientStockException()
+        : base("Insufficient stock to complete the inventory movement.")
+    {
+    }
 }

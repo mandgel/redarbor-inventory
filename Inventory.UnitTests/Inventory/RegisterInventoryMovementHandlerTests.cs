@@ -38,4 +38,29 @@ public sealed class RegisterInventoryMovementHandlerTests
         Assert.Equal(4m, result.Quantity);
         Assert.Equal(6m, result.CurrentStock);
     }
+    [Fact]
+    public async Task HandleAsync_WhenOutboundMovementExceedsStock_ShouldThrowInsufficientStockException()
+    {
+        var productId = Guid.NewGuid();
+
+        var command = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 5m,
+            IdempotencyKey = "test-key-002"
+        };
+
+        var store = new FakeInventoryBalanceStore(
+            currentStock: 3m);
+
+        var handler = new RegisterInventoryMovementHandler(store);
+
+        await Assert.ThrowsAsync<InsufficientStockException>(
+            () => handler.HandleAsync(
+                command,
+                CancellationToken.None));
+
+        Assert.Equal(3m, store.CurrentStock);
+    }
 }

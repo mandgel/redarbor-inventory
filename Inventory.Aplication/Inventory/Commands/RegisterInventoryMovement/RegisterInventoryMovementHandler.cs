@@ -18,22 +18,48 @@ public sealed class RegisterInventoryMovementHandler
         RegisterInventoryMovementCommand command,
         CancellationToken cancellationToken)
     {
-        var quantityChange = command.MovementType switch
+        var change = CreateBalanceChange(command);
+        var balanceResult = await _store.ApplyMovementAsync(
+            change,
+            cancellationToken);
+
+        if (!balanceResult.Applied)
+        {
+            throw new InsufficientStockException();
+        }
+
+        return CreateResult(
+            command,
+            balanceResult.CurrentStock!.Value);
+    }
+
+    private static InventoryBalanceChange CreateBalanceChange(
+    RegisterInventoryMovementCommand command)
+    {
+        return new InventoryBalanceChange
+        {
+            ProductId = command.ProductId,
+            QuantityChange = GetQuantityChange(command),
+            PreventNegativeStock = true
+        };
+    }
+
+    private static decimal GetQuantityChange(
+    RegisterInventoryMovementCommand command)
+    {
+        return command.MovementType switch
         {
             InventoryMovementType.Inbound => command.Quantity,
             InventoryMovementType.Outbound => -command.Quantity,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(command.MovementType))
         };
-        var change = new InventoryBalanceChange
-        {
-            ProductId = command.ProductId,
-            QuantityChange = quantityChange
-        };
-        var currentStock = await _store.ApplyMovementAsync(
-            change,
-            cancellationToken);
+    }
 
+    private static RegisterInventoryMovementResult CreateResult(
+    RegisterInventoryMovementCommand command,
+    decimal currentStock)
+    {
         return new RegisterInventoryMovementResult
         {
             MovementId = 1,

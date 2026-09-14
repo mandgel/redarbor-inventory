@@ -10,16 +10,34 @@ namespace Inventory.UnitTests.Inventory;
 internal sealed class FakeInventoryBalanceStore : IInventoryBalanceStore
 {
     public decimal CurrentStock { get; private set; }
+
     public FakeInventoryBalanceStore(decimal currentStock)
     {
         CurrentStock = currentStock;
     }
-    public Task<decimal> ApplyMovementAsync(
+
+    public Task<InventoryBalanceChangeResult> ApplyMovementAsync(
         InventoryBalanceChange change,
         CancellationToken cancellationToken)
-    { 
-        CurrentStock += change.QuantityChange;
+    {
+        var resultingStock = CurrentStock + change.QuantityChange;
 
-        return Task.FromResult(CurrentStock);  
+        if (change.PreventNegativeStock && resultingStock < 0)
+        {
+            return Task.FromResult(
+                new InventoryBalanceChangeResult
+                {
+                    Applied = false
+                });
+        }
+
+        CurrentStock = resultingStock;
+
+        return Task.FromResult(
+            new InventoryBalanceChangeResult
+            {
+                Applied = true,
+                CurrentStock = CurrentStock
+            });
     }
 }
