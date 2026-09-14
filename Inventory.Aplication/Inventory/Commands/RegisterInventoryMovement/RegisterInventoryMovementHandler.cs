@@ -19,47 +19,29 @@ public sealed class RegisterInventoryMovementHandler
     }
 
     public async Task<RegisterInventoryMovementResult> HandleAsync(
-        RegisterInventoryMovementCommand command,
-        CancellationToken cancellationToken)
+    RegisterInventoryMovementCommand command,
+    CancellationToken cancellationToken)
     {
         var fingerprint = InventoryMovementFingerprint.Create(command);
-        var previousRecord = await _idempotencyStore.GetAsync(
-            command.IdempotencyKey,
-            cancellationToken);
 
-        if (previousRecord is not null)
-        {
-            if (previousRecord.RequestFingerprint != fingerprint)
-            {
-                throw new IdempotencyConflictException();
-            }
-
-            return previousRecord.Result;
-        }
-
-        var change = CreateBalanceChange(command);
-        var balanceResult = await _store.ApplyMovementAsync(
-            change,
-            cancellationToken);
-
-        if (!balanceResult.Applied)
-        {
-            throw new InsufficientStockException();
-        }
-
-        var result = CreateResult(
+        var previousResult = await GetPreviousResultAsync(
             command,
-            balanceResult.CurrentStock!.Value);
+            fingerprint,
+            cancellationToken);
 
-        var idempotencyRecord = new IdempotencyRecord
+        if (previousResult is not null)
         {
-            IdempotencyKey = command.IdempotencyKey,
-            RequestFingerprint = fingerprint,
-            Result = result
-        };
+            return previousResult;
+        }
 
-        await _idempotencyStore.SaveAsync(
-            idempotencyRecord,
+        var result = await ApplyMovementAsync(
+            command,
+            cancellationToken);
+
+        await SaveIdempotencyRecordAsync(
+            command,
+            fingerprint,
+            result,
             cancellationToken);
 
         return result;
@@ -102,5 +84,64 @@ public sealed class RegisterInventoryMovementHandler
             CurrentStock = currentStock,
             CreatedAt = DateTimeOffset.UtcNow
         };
+    }
+
+    private async Task<RegisterInventoryMovementResult?> GetPreviousResultAsync(
+    RegisterInventoryMovementCommand command,
+    string fingerprint,
+    CancellationToken cancellationToken)
+    {
+        var previousRecord = await _idempotencyStore.GetAsync(
+            command.IdempotencyKey,
+            cancellationToken);
+
+        if (previousRecord is null)
+        {
+            return null;
+        }
+
+        if (previousRecord.RequestFingerprint != fingerprint)
+        {
+            throw new IdempotencyConflictException();
+        }
+
+        return previousRecord.Result;
+    }
+
+    private async Task<RegisterInventoryMovementResult> ApplyMovementAsync(
+    RegisterInventoryMovementCommand command,
+    CancellationToken cancellationToken)
+    {
+        var change = CreateBalanceChange(command);
+
+        var balanceResult = await _store.ApplyMovementAsync(
+            change,
+            cancellationToken);
+
+        if (!balanceResult.Applied)
+        {
+            throw new InsufficientStockException();
+        }
+
+        return CreateResult(
+            command,
+            balanceResult.CurrentStock!.Value);
+    }
+    private Task SaveIdempotencyRecordAsync(
+    RegisterInventoryMovementCommand command,
+    string fingerprint,
+    RegisterInventoryMovementResult result,
+    CancellationToken cancellationToken)
+    {
+        var record = new IdempotencyRecord
+        {
+            IdempotencyKey = command.IdempotencyKey,
+            RequestFingerprint = fingerprint,
+            Result = result
+        };
+
+        return _idempotencyStore.SaveAsync(
+            record,
+            cancellationToken);
     }
 }
