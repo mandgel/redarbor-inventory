@@ -5,6 +5,12 @@ using Inventory.Application.Categories.Commands.UpdateCategory;
 using Inventory.Application.Categories.Queries.GetCategories;
 using Inventory.Application.Categories.Queries.GetCategoryById;
 using Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
+using Inventory.Application.Products;
+using Inventory.Application.Products.Commands.CreateProduct;
+using Inventory.Application.Products.Commands.DeleteProduct;
+using Inventory.Application.Products.Commands.UpdateProduct;
+using Inventory.Application.Products.Queries.GetProductById;
+using Inventory.Application.Products.Queries.GetProducts;
 using Inventory.Domain.Inventory;
 using Inventory.Infrastructure.Persistence;
 using Inventory.Infrastructure.Persistence.Commands;
@@ -49,6 +55,16 @@ builder.Services.AddScoped<UpdateCategoryHandler>();
 builder.Services.AddScoped<DeleteCategoryHandler>();
 builder.Services.AddScoped<GetCategoriesHandler>();
 builder.Services.AddScoped<GetCategoryByIdHandler>();
+
+builder.Services.AddScoped<IProductWriteStore>(
+    _ => new DapperProductWriteStore(connectionString));
+builder.Services.AddScoped<IProductReadStore, EfProductReadStore>();
+
+builder.Services.AddScoped<CreateProductHandler>();
+builder.Services.AddScoped<UpdateProductHandler>();
+builder.Services.AddScoped<DeleteProductHandler>();
+builder.Services.AddScoped<GetProductsHandler>();
+builder.Services.AddScoped<GetProductByIdHandler>();
 
 var app = builder.Build();
 
