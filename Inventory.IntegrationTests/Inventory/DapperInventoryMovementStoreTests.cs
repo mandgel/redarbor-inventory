@@ -8,9 +8,7 @@ namespace Inventory.IntegrationTests.Inventory;
 
 public sealed class DapperInventoryMovementStoreTests
 {
-    private const string ConnectionString =
-        "Server=localhost,1433;Database=InventoryDb;User Id=sa;Password=InventoryDev_2026_Strong!;TrustServerCertificate=True";
-
+    
     [Fact]
     public async Task ExecuteAsync_WhenOutboundMovementIsValid_ShouldPersistMovementAndUpdateBalance()
     {
@@ -23,7 +21,7 @@ public sealed class DapperInventoryMovementStoreTests
             initialStock: 10m);
 
         var store = new DapperInventoryMovementStore(
-            ConnectionString);
+            GetConnectionString());
 
         var command = new RegisterInventoryMovementCommand
         {
@@ -69,7 +67,7 @@ public sealed class DapperInventoryMovementStoreTests
     decimal initialStock)
     {
         await using var connection =
-            new SqlConnection(ConnectionString);
+            new SqlConnection(GetConnectionString());
 
         await connection.OpenAsync();
 
@@ -149,7 +147,7 @@ public sealed class DapperInventoryMovementStoreTests
     decimal expectedStock)
     {
         await using var connection =
-            new SqlConnection(ConnectionString);
+            new SqlConnection(GetConnectionString());
 
         await connection.OpenAsync();
 
@@ -174,5 +172,13 @@ public sealed class DapperInventoryMovementStoreTests
         Assert.Equal(expectedStock, currentStock);
         Assert.Equal(1, movementCount);
 
+    }
+
+    private static string GetConnectionString()
+    {
+        return Environment.GetEnvironmentVariable(
+            "ConnectionStrings__InventoryDatabase")
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings__InventoryDatabase is not configured.");
     }
 }
