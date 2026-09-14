@@ -37,6 +37,9 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateAsync(
         [FromBody] CreateProductRequest request,
         CancellationToken cancellationToken)
@@ -90,6 +93,8 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpGet("{id:guid}", Name = "GetProductById")]
+    [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken)
@@ -101,11 +106,14 @@ public sealed class ProductsController : ControllerBase
             cancellationToken);
 
         return product is null
-            ? NotFound()
+            ? NotFoundProblem()
             : Ok(product);
     }
 
     [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UpdateAsync(
         Guid id,
         [FromBody] UpdateProductRequest request,
@@ -131,6 +139,8 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(
         Guid id,
         CancellationToken cancellationToken)
@@ -143,7 +153,7 @@ public sealed class ProductsController : ControllerBase
 
         return status == ProductDeleteStatus.Deleted
             ? NoContent()
-            : NotFound();
+            : NotFoundProblem();
     }
 
     private IActionResult BuildWriteResponse(
@@ -157,13 +167,25 @@ public sealed class ProductsController : ControllerBase
 
         return result.ErrorType switch
         {
-            ProductWriteErrorType.ProductNotFound => NotFound(),
-            ProductWriteErrorType.CategoryUnavailable => Conflict(
-                "The specified category does not exist, is inactive or is deleted."),
-            ProductWriteErrorType.DuplicateSku => Conflict(
-                "The specified SKU is already in use."),
-            _ => Conflict()
+            ProductWriteErrorType.ProductNotFound => NotFoundProblem(),
+            ProductWriteErrorType.CategoryUnavailable => Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Conflict",
+                detail: "The specified category does not exist, is inactive or is deleted."),
+            ProductWriteErrorType.DuplicateSku => Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Conflict",
+                detail: "The specified SKU is already in use."),
+            _ => Problem(statusCode: StatusCodes.Status409Conflict)
         };
+    }
+
+    private ObjectResult NotFoundProblem()
+    {
+        return Problem(
+            statusCode: StatusCodes.Status404NotFound,
+            title: "Not Found",
+            detail: "The specified product does not exist.");
     }
 
     private static int NormalizePage(int page)

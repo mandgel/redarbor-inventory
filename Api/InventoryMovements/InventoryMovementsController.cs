@@ -20,18 +20,24 @@ public sealed class InventoryMovementsController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(RegisterInventoryMovementResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> RegisterAsync(
         [FromBody] RegisterInventoryMovementRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        var idempotencyKey = Request.Headers[IdempotencyKeyHeaderName]
-            .ToString();
-
         var validationError = Validate(request, idempotencyKey);
 
         if (validationError is not null)
         {
-            return BadRequest(validationError);
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: validationError);
         }
 
         var command = new RegisterInventoryMovementCommand
@@ -42,33 +48,11 @@ public sealed class InventoryMovementsController : ControllerBase
             IdempotencyKey = idempotencyKey
         };
 
-        return await ExecuteAsync(command, cancellationToken);
-    }
+        var result = await _handler.HandleAsync(
+            command,
+            cancellationToken);
 
-    private async Task<IActionResult> ExecuteAsync(
-        RegisterInventoryMovementCommand command,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var result = await _handler.HandleAsync(
-                command,
-                cancellationToken);
-
-            return StatusCode(StatusCodes.Status201Created, result);
-        }
-        catch (InsufficientStockException)
-        {
-            return Conflict("Insufficient stock to complete the inventory movement.");
-        }
-        catch (IdempotencyConflictException)
-        {
-            return Conflict("The idempotency key has already been used for a different request.");
-        }
-        catch (ProductNotFoundException)
-        {
-            return NotFound("The specified product does not exist.");
-        }
+        return StatusCode(StatusCodes.Status201Created, result);
     }
 
     private static string? Validate(

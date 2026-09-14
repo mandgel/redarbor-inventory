@@ -35,6 +35,8 @@ public sealed class CategoriesController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateAsync(
         [FromBody] CreateCategoryRequest request,
         CancellationToken cancellationToken)
@@ -77,6 +79,8 @@ public sealed class CategoriesController : ControllerBase
     }
 
     [HttpGet("{id:guid}", Name = "GetCategoryById")]
+    [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken)
@@ -88,11 +92,13 @@ public sealed class CategoriesController : ControllerBase
             cancellationToken);
 
         return category is null
-            ? NotFound()
+            ? NotFoundProblem()
             : Ok(category);
     }
 
     [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateAsync(
         Guid id,
         [FromBody] UpdateCategoryRequest request,
@@ -110,11 +116,13 @@ public sealed class CategoriesController : ControllerBase
             cancellationToken);
 
         return category is null
-            ? NotFound()
+            ? NotFoundProblem()
             : Ok(category);
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(
         Guid id,
         CancellationToken cancellationToken)
@@ -127,7 +135,15 @@ public sealed class CategoriesController : ControllerBase
 
         return deleted
             ? NoContent()
-            : NotFound();
+            : NotFoundProblem();
+    }
+
+    private ObjectResult NotFoundProblem()
+    {
+        return Problem(
+            statusCode: StatusCodes.Status404NotFound,
+            title: "Not Found",
+            detail: "The specified category does not exist.");
     }
 
     private static int NormalizePage(int page)

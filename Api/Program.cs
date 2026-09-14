@@ -1,4 +1,5 @@
 using Inventory.Application.Categories;
+using Inventory.Api.Common.Errors;
 using Inventory.Application.Categories.Commands.CreateCategory;
 using Inventory.Application.Categories.Commands.DeleteCategory;
 using Inventory.Application.Categories.Commands.UpdateCategory;
@@ -38,6 +39,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 builder.Services.AddScoped<IInventoryMovementStore>(
     _ => new DapperInventoryMovementStore(connectionString));
 
@@ -73,6 +77,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
