@@ -46,6 +46,8 @@
       "serviceAccountsEnabled": false,
       "implicitFlowEnabled": false,
       "redirectUris": [
+        "http://localhost:5177/swagger/oauth2-redirect.html",
+        "http://localhost:5177/*",
         "http://localhost:5000/swagger/oauth2-redirect.html",
         "https://localhost:5001/swagger/oauth2-redirect.html",
         "http://localhost:8081/swagger/oauth2-redirect.html"

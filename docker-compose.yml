@@ -27,10 +27,49 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: http://keycloak.localhost:8080
+      KC_HTTP_ENABLED: "true"
     ports:
       - "8080:8080"
     volumes:
       - ./keycloak:/opt/keycloak/data/import
+    networks:
+      default:
+        aliases:
+          - keycloak.localhost
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Inventory.Migrator/Dockerfile
+    container_name: inventory-migrator
+    environment:
+      ConnectionStrings__InventoryDatabase: "Server=sql-server,1433;Database=InventoryDb;User Id=sa;Password=${SQL_SERVER_PASSWORD};TrustServerCertificate=True"
+    depends_on:
+      sql-server:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: Api/Dockerfile
+    container_name: inventory-api
+    environment:
+      ConnectionStrings__InventoryDatabase: "Server=sql-server,1433;Database=InventoryDb;User Id=sa;Password=${SQL_SERVER_PASSWORD};TrustServerCertificate=True"
+      Inventory__NegativeStockPolicy: "Reject"
+      Authentication__Authority: "http://keycloak.localhost:8080/realms/inventory"
+      Authentication__Audience: "inventory-api"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:8080"
+    ports:
+      - "5177:8080"
+    depends_on:
+      sql-server:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
 
 volumes:
   inventory-sql-data:
