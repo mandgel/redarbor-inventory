@@ -4,47 +4,43 @@ namespace Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
 
 public sealed class RegisterInventoryMovementHandler
 {
-    private readonly IInventoryBalanceStore _store;
+    private readonly IInventoryMovementStore _store;
     private readonly NegativeStockPolicy _negativeStockPolicy;
-    private readonly IIdempotencyStore _idempotencyStore;
 
     public RegisterInventoryMovementHandler(
-        IInventoryBalanceStore store,
-        IIdempotencyStore idempotencyStore,
+        IInventoryMovementStore store,
         NegativeStockPolicy negativeStockPolicy)
     {
         _store = store;
-        _idempotencyStore = idempotencyStore;
         _negativeStockPolicy = negativeStockPolicy;
     }
 
     public async Task<RegisterInventoryMovementResult> HandleAsync(
-    RegisterInventoryMovementCommand command,
-    CancellationToken cancellationToken)
+        RegisterInventoryMovementCommand command,
+        CancellationToken cancellationToken)
+    {
+        var execution = CreateExecution(command);
+
+        var executionResult = await _store.ExecuteAsync(
+            execution,
+            cancellationToken);
+
+        return MapResult(executionResult);
+    }
+
+    private InventoryMovementExecution CreateExecution(
+        RegisterInventoryMovementCommand command)
     {
         var fingerprint = InventoryMovementFingerprint.Create(command);
 
-        var previousResult = await GetPreviousResultAsync(
-            command,
-            fingerprint,
-            cancellationToken);
+        var balanceChange = CreateBalanceChange(command);
 
-        if (previousResult is not null)
+        return new InventoryMovementExecution
         {
-            return previousResult;
-        }
-
-        var result = await ApplyMovementAsync(
-            command,
-            cancellationToken);
-
-        await SaveIdempotencyRecordAsync(
-            command,
-            fingerprint,
-            result,
-            cancellationToken);
-
-        return result;
+            Command = command,
+            BalanceChange = balanceChange,
+            RequestFingerprint = fingerprint
+        };
     }
 
     private InventoryBalanceChange CreateBalanceChange(
@@ -71,77 +67,19 @@ public sealed class RegisterInventoryMovementHandler
         };
     }
 
-    private static RegisterInventoryMovementResult CreateResult(
-        RegisterInventoryMovementCommand command,
-        decimal currentStock)
+    private static RegisterInventoryMovementResult MapResult(
+        InventoryMovementExecutionResult executionResult)
     {
-        return new RegisterInventoryMovementResult
+        return executionResult.Status switch
         {
-            MovementId = 1,
-            ProductId = command.ProductId,
-            MovementType = command.MovementType,
-            Quantity = command.Quantity,
-            CurrentStock = currentStock,
-            CreatedAt = DateTimeOffset.UtcNow
+            InventoryMovementExecutionStatus.Applied => executionResult.Result!,
+            InventoryMovementExecutionStatus.Replayed => executionResult.Result!,
+            InventoryMovementExecutionStatus.InsufficientStock =>
+                throw new InsufficientStockException(),
+            InventoryMovementExecutionStatus.IdempotencyConflict =>
+                throw new IdempotencyConflictException(),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(executionResult.Status))
         };
-    }
-
-    private async Task<RegisterInventoryMovementResult?> GetPreviousResultAsync(
-    RegisterInventoryMovementCommand command,
-    string fingerprint,
-    CancellationToken cancellationToken)
-    {
-        var previousRecord = await _idempotencyStore.GetAsync(
-            command.IdempotencyKey,
-            cancellationToken);
-
-        if (previousRecord is null)
-        {
-            return null;
-        }
-
-        if (previousRecord.RequestFingerprint != fingerprint)
-        {
-            throw new IdempotencyConflictException();
-        }
-
-        return previousRecord.Result;
-    }
-
-    private async Task<RegisterInventoryMovementResult> ApplyMovementAsync(
-    RegisterInventoryMovementCommand command,
-    CancellationToken cancellationToken)
-    {
-        var change = CreateBalanceChange(command);
-
-        var balanceResult = await _store.ApplyMovementAsync(
-            change,
-            cancellationToken);
-
-        if (!balanceResult.Applied)
-        {
-            throw new InsufficientStockException();
-        }
-
-        return CreateResult(
-            command,
-            balanceResult.CurrentStock!.Value);
-    }
-    private Task SaveIdempotencyRecordAsync(
-    RegisterInventoryMovementCommand command,
-    string fingerprint,
-    RegisterInventoryMovementResult result,
-    CancellationToken cancellationToken)
-    {
-        var record = new IdempotencyRecord
-        {
-            IdempotencyKey = command.IdempotencyKey,
-            RequestFingerprint = fingerprint,
-            Result = result
-        };
-
-        return _idempotencyStore.SaveAsync(
-            record,
-            cancellationToken);
     }
 }
