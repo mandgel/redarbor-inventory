@@ -50,10 +50,10 @@ public sealed class CategoriesController : ControllerBase
             command,
             cancellationToken);
 
-        return CreatedAtAction(
-            nameof(GetByIdAsync),
-            new { id = category.Id },
-            category);
+        return CreatedAtRoute(
+             "GetCategoryById",
+             new { id = category.Id },
+             category);
     }
 
     [HttpGet]
@@ -78,7 +78,7 @@ public sealed class CategoriesController : ControllerBase
         return Ok(PagedResponse<CategoryDto>.FromPagedResult(result));
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "GetCategoryById")]
     public async Task<IActionResult> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken)
