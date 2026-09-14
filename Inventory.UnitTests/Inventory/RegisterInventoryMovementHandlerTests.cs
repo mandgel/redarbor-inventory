@@ -27,7 +27,8 @@ public sealed class RegisterInventoryMovementHandlerTests
         };
 
         var store = new FakeInventoryBalanceStore(10m);
-        var handler = new RegisterInventoryMovementHandler(store, NegativeStockPolicy.Reject);
+        var idempotencyStore = new FakeIdempotencyStore();
+        var handler = new RegisterInventoryMovementHandler(store, idempotencyStore, NegativeStockPolicy.Reject);
 
         var result = await handler.HandleAsync(
             command,
@@ -54,7 +55,8 @@ public sealed class RegisterInventoryMovementHandlerTests
         var store = new FakeInventoryBalanceStore(
             currentStock: 3m);
 
-        var handler = new RegisterInventoryMovementHandler(store, NegativeStockPolicy.Reject);
+        var idempotencyStore = new FakeIdempotencyStore();
+        var handler = new RegisterInventoryMovementHandler(store, idempotencyStore, NegativeStockPolicy.Reject);
 
         await Assert.ThrowsAsync<InsufficientStockException>(
             () => handler.HandleAsync(
@@ -79,8 +81,10 @@ public sealed class RegisterInventoryMovementHandlerTests
         var store = new FakeInventoryBalanceStore(
             currentStock: 3m);
 
+        var idempotencyStore = new FakeIdempotencyStore();
         var handler = new RegisterInventoryMovementHandler(
             store,
+            idempotencyStore,
             NegativeStockPolicy.Allow);
 
         var result = await handler.HandleAsync(
@@ -89,5 +93,43 @@ public sealed class RegisterInventoryMovementHandlerTests
 
         Assert.Equal(-2m, result.CurrentStock);
         Assert.Equal(-2m, store.CurrentStock);
+    }
+    [Fact]
+    public async Task HandleAsync_WhenSameRequestIsRetried_ShouldNotApplyMovementTwice()
+    {
+        var productId = Guid.NewGuid();
+
+        var command = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 4m,
+            IdempotencyKey = "test-key-004"
+        };
+
+        var store = new FakeInventoryBalanceStore(
+            currentStock: 10m);
+
+        var idempotencyStore = new FakeIdempotencyStore();
+
+        var handler = new RegisterInventoryMovementHandler(
+            store,
+            idempotencyStore,
+            NegativeStockPolicy.Reject);
+
+        var firstResult = await handler.HandleAsync(
+            command,
+            CancellationToken.None);
+
+        var secondResult = await handler.HandleAsync(
+            command,
+            CancellationToken.None);
+
+        Assert.Equal(6m, firstResult.CurrentStock);
+        Assert.Equal(6m, secondResult.CurrentStock);
+        Assert.Equal(6m, store.CurrentStock);
+        Assert.Equal(
+            firstResult.MovementId,
+            secondResult.MovementId);
     }
 }

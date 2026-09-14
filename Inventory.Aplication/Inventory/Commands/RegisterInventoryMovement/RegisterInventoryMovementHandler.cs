@@ -11,29 +11,44 @@ public sealed class RegisterInventoryMovementHandler
 {
     private readonly IInventoryBalanceStore _store;
     private readonly NegativeStockPolicy _negativeStockPolicy;
-    public RegisterInventoryMovementHandler(IInventoryBalanceStore store, 
+    private readonly IIdempotencyStore _idempotencyStore;
+    public RegisterInventoryMovementHandler(
+        IInventoryBalanceStore store, 
+        IIdempotencyStore idempotencyStore,
         NegativeStockPolicy negativeStockPolicy)
     {
         _store = store;
+        _idempotencyStore = idempotencyStore;
         _negativeStockPolicy = negativeStockPolicy;
     }
     public async Task<RegisterInventoryMovementResult> HandleAsync(
         RegisterInventoryMovementCommand command,
         CancellationToken cancellationToken)
     {
+        var previousResult = await _idempotencyStore.GetAsync(
+            command.IdempotencyKey,
+    cancellationToken);
+        if (previousResult is not null)
+        {
+            return previousResult;
+        }
         var change = CreateBalanceChange(command);
         var balanceResult = await _store.ApplyMovementAsync(
             change,
             cancellationToken);
-
         if (!balanceResult.Applied)
         {
             throw new InsufficientStockException();
         }
-
-        return CreateResult(
+        var result = CreateResult(
             command,
             balanceResult.CurrentStock!.Value);
+        await _idempotencyStore.SaveAsync(
+            command.IdempotencyKey,
+            result,
+            cancellationToken);
+
+        return result;
     }
 
     private InventoryBalanceChange CreateBalanceChange(
