@@ -4,14 +4,14 @@ WORKDIR /src
 COPY Inventory.sln ./
 COPY Inventory.Migrator/Inventory.Migrator.csproj Inventory.Migrator/
 COPY Inventory.Infrastructure/Inventory.Infrastructure.csproj Inventory.Infrastructure/
-COPY Inventory.Aplication/Inventory.Application.csproj Inventory.Aplication/
+COPY Inventory.Application/Inventory.Application.csproj Inventory.Application/
 COPY Inventory.Domain/Inventory.Domain.csproj Inventory.Domain/
 
 RUN dotnet restore Inventory.Migrator/Inventory.Migrator.csproj
 
 COPY Inventory.Migrator/ Inventory.Migrator/
 COPY Inventory.Infrastructure/ Inventory.Infrastructure/
-COPY Inventory.Aplication/ Inventory.Aplication/
+COPY Inventory.Application/ Inventory.Application/
 COPY Inventory.Domain/ Inventory.Domain/
 
 RUN dotnet publish Inventory.Migrator/Inventory.Migrator.csproj -c Release -o /app/publish --no-restore

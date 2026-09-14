@@ -3,7 +3,7 @@ WORKDIR /src
 
 COPY Inventory.sln ./
 COPY Api/Inventory.Api.csproj Api/
-COPY Inventory.Aplication/Inventory.Application.csproj Inventory.Aplication/
+COPY Inventory.Application/Inventory.Application.csproj Inventory.Application/
 COPY Inventory.Domain/Inventory.Domain.csproj Inventory.Domain/
 COPY Inventory.Infrastructure/Inventory.Infrastructure.csproj Inventory.Infrastructure/
 COPY Inventory.UnitTests/Inventory.UnitTests.csproj Inventory.UnitTests/
@@ -13,7 +13,7 @@ COPY Inventory.Migrator/Inventory.Migrator.csproj Inventory.Migrator/
 RUN dotnet restore Api/Inventory.Api.csproj
 
 COPY Api/ Api/
-COPY Inventory.Aplication/ Inventory.Aplication/
+COPY Inventory.Application/ Inventory.Application/
 COPY Inventory.Domain/ Inventory.Domain/
 COPY Inventory.Infrastructure/ Inventory.Infrastructure/
 

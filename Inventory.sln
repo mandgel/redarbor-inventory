@@ -5,7 +5,7 @@ VisualStudioVersion = 17.14.37203.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Inventory.Api", "Api\Inventory.Api.csproj", "{CF46B68C-BAB9-4DFC-9077-D9254488525B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Inventory.Application", "Inventory.Aplication\Inventory.Application.csproj", "{B7C2B49F-F177-40C0-BFAF-F60EC0656DCA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Inventory.Application", "Inventory.Application\Inventory.Application.csproj", "{B7C2B49F-F177-40C0-BFAF-F60EC0656DCA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Inventory.Domain", "Inventory.Domain\Inventory.Domain.csproj", "{70CE0950-76A3-4FE4-80E3-B56B1345481A}"
 EndProject

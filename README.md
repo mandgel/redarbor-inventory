@@ -9,6 +9,16 @@ idempotency, OAuth2/OIDC authentication, permission-based authorization,
 automated tests, Swagger/OpenAPI documentation, and a reproducible
 Docker environment.
 
+## Evaluation quick start
+
+1. Clone
+2. Copy .env.example to .env
+3. Add keycloak.localhost to hosts on Windows
+4. docker compose up --build
+5. Open Swagger
+6. Obtain admin token
+7. Authorize and test
+
 ## Architecture
 
 The solution uses a lightweight layered architecture with explicit
@@ -705,6 +715,8 @@ $response.access_token | Set-Clipboard
 Open `http://localhost:5177/swagger`, select **Authorize**, and use the generated bearer token.
 
 To verify permission enforcement, repeat the request using `inventory-reader` and `ReaderDev_2026!`.
+
+These credentials are intentionally versioned as part of the local Keycloak realm and must not be used outside the development/evaluation environment.
 
 ## Project scope
 
