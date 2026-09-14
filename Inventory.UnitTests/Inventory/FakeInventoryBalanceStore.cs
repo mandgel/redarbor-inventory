@@ -15,18 +15,11 @@ internal sealed class FakeInventoryBalanceStore : IInventoryBalanceStore
         CurrentStock = currentStock;
     }
     public Task<decimal> ApplyMovementAsync(
-        RegisterInventoryMovementCommand command,
+        InventoryBalanceChange change,
         CancellationToken cancellationToken)
-    {
-        if (command.MovementType == InventoryMovementType.Outbound)
-        {
-            CurrentStock -= command.Quantity;
-        }
-        else
-        {
-            CurrentStock += command.Quantity;
-        }
+    { 
+        CurrentStock += change.QuantityChange;
 
-        return Task.FromResult(CurrentStock);
+        return Task.FromResult(CurrentStock);  
     }
 }

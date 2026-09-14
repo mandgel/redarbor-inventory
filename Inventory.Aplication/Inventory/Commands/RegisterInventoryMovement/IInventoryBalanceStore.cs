@@ -8,6 +8,6 @@ namespace Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
 public interface IInventoryBalanceStore
 {
     Task<decimal> ApplyMovementAsync(
-        RegisterInventoryMovementCommand command,
+        InventoryBalanceChange change,
         CancellationToken cancellationToken);
 }

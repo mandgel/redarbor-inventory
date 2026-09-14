@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Inventory.Domain.Inventory;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,8 +18,20 @@ public sealed class RegisterInventoryMovementHandler
         RegisterInventoryMovementCommand command,
         CancellationToken cancellationToken)
     {
+        var quantityChange = command.MovementType switch
+        {
+            InventoryMovementType.Inbound => command.Quantity,
+            InventoryMovementType.Outbound => -command.Quantity,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(command.MovementType))
+        };
+        var change = new InventoryBalanceChange
+        {
+            ProductId = command.ProductId,
+            QuantityChange = quantityChange
+        };
         var currentStock = await _store.ApplyMovementAsync(
-            command,
+            change,
             cancellationToken);
 
         return new RegisterInventoryMovementResult
