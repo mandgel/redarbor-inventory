@@ -663,6 +663,49 @@ different payload + same Idempotency-Key
     -> 409 Conflict
 ```
 
+### Obtain a bearer token with PowerShell
+
+The imported Keycloak realm contains development-only test users:
+
+```text
+Admin
+Username: inventory-admin
+Password: AdminDev_2026!
+
+Reader
+Username: inventory-reader
+Password: ReaderDev_2026!
+```
+
+To obtain an access token for `inventory-admin`:
+
+```powershell
+$body = @{
+    client_id  = "inventory-swagger"
+    grant_type = "password"
+    username   = "inventory-admin"
+    password   = "AdminDev_2026!"
+}
+
+$response = Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://keycloak.localhost:8080/realms/inventory/protocol/openid-connect/token" `
+    -ContentType "application/x-www-form-urlencoded" `
+    -Body $body
+
+$response.access_token
+```
+
+To copy the token directly to the clipboard:
+
+```powershell
+$response.access_token | Set-Clipboard
+```
+
+Open `http://localhost:5177/swagger`, select **Authorize**, and use the generated bearer token.
+
+To verify permission enforcement, repeat the request using `inventory-reader` and `ReaderDev_2026!`.
+
 ## Project scope
 
 Implemented in the final MVP:
