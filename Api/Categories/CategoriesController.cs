@@ -1,15 +1,18 @@
 using Inventory.Application.Categories.Commands.CreateCategory;
+using Inventory.Api.Auth;
 using Inventory.Application.Categories.Commands.DeleteCategory;
 using Inventory.Application.Categories.Commands.UpdateCategory;
 using Inventory.Application.Categories.Queries.GetCategories;
 using Inventory.Application.Categories.Queries.GetCategoryById;
 using Inventory.Application.Categories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Inventory.Api.Categories;
 
 [ApiController]
 [Route("api/categories")]
+[Authorize]
 public sealed class CategoriesController : ControllerBase
 {
     private const int MinPageSize = 1;
@@ -35,6 +38,7 @@ public sealed class CategoriesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = Permissions.CategoriesCreate)]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateAsync(
@@ -58,6 +62,7 @@ public sealed class CategoriesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.CategoriesRead)]
     public async Task<IActionResult> GetAsync(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -79,6 +84,7 @@ public sealed class CategoriesController : ControllerBase
     }
 
     [HttpGet("{id:guid}", Name = "GetCategoryById")]
+    [Authorize(Policy = Permissions.CategoriesRead)]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(
@@ -97,6 +103,7 @@ public sealed class CategoriesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = Permissions.CategoriesUpdate)]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateAsync(
@@ -121,6 +128,7 @@ public sealed class CategoriesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Permissions.CategoriesDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(

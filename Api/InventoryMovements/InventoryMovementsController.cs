@@ -1,11 +1,14 @@
 using Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
+using Inventory.Api.Auth;
 using Inventory.Domain.Inventory;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Inventory.Api.InventoryMovements;
 
 [ApiController]
 [Route("api/inventory-movements")]
+[Authorize]
 public sealed class InventoryMovementsController : ControllerBase
 {
     private const string IdempotencyKeyHeaderName = "Idempotency-Key";
@@ -20,6 +23,7 @@ public sealed class InventoryMovementsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = Permissions.InventoryCreate)]
     [ProducesResponseType(typeof(RegisterInventoryMovementResult), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

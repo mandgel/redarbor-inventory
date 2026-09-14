@@ -1,16 +1,19 @@
 using Inventory.Api.Categories;
+using Inventory.Api.Auth;
 using Inventory.Application.Products;
 using Inventory.Application.Products.Commands.CreateProduct;
 using Inventory.Application.Products.Commands.DeleteProduct;
 using Inventory.Application.Products.Commands.UpdateProduct;
 using Inventory.Application.Products.Queries.GetProductById;
 using Inventory.Application.Products.Queries.GetProducts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Inventory.Api.Products;
 
 [ApiController]
 [Route("api/products")]
+[Authorize]
 public sealed class ProductsController : ControllerBase
 {
     private const int MinPageSize = 1;
@@ -37,6 +40,7 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = Permissions.ProductsCreate)]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
@@ -66,6 +70,7 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.ProductsRead)]
     public async Task<IActionResult> GetAsync(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -93,6 +98,7 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpGet("{id:guid}", Name = "GetProductById")]
+    [Authorize(Policy = Permissions.ProductsRead)]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(
@@ -111,6 +117,7 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = Permissions.ProductsUpdate)]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
@@ -139,6 +146,7 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Permissions.ProductsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(
