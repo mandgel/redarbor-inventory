@@ -8,7 +8,6 @@ namespace Inventory.IntegrationTests.Inventory;
 
 public sealed class DapperInventoryMovementStoreTests
 {
-    
     [Fact]
     public async Task ExecuteAsync_WhenOutboundMovementIsValid_ShouldPersistMovementAndUpdateBalance()
     {

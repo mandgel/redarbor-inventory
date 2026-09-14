@@ -20,32 +20,24 @@ using Inventory.Infrastructure.Persistence.Queries;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-
 var builder = WebApplication.CreateBuilder(args);
-
 var connectionString = builder.Configuration
     .GetConnectionString("InventoryDatabase")
     ?? throw new InvalidOperationException(
         "Inventory database connection string is not configured.");
-
 var negativeStockPolicyValue = builder.Configuration[
     "Inventory:NegativeStockPolicy"] ?? "Reject";
-
 var negativeStockPolicy = Enum.Parse<NegativeStockPolicy>(
     negativeStockPolicyValue,
     ignoreCase: true);
-
 builder.Services.AddDbContext<InventoryDbContext>(options =>
     options.UseSqlServer(connectionString));
-
 var authenticationAuthority = builder.Configuration["Authentication:Authority"]
     ?? throw new InvalidOperationException(
         "Authentication:Authority is not configured.");
-
 var authenticationAudience = builder.Configuration["Authentication:Audience"]
     ?? throw new InvalidOperationException(
         "Authentication:Audience is not configured.");
-
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -54,7 +46,6 @@ builder.Services
         options.Audience = authenticationAudience;
         options.RequireHttpsMetadata = false;
     });
-
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Permissions.ProductsRead, policy =>
         policy.RequireClaim("permission", Permissions.ProductsRead))
@@ -76,7 +67,6 @@ builder.Services.AddAuthorizationBuilder()
         policy.RequireClaim("permission", Permissions.InventoryRead))
     .AddPolicy(Permissions.InventoryCreate, policy =>
         policy.RequireClaim("permission", Permissions.InventoryCreate));
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -90,7 +80,6 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "Enter a valid JWT access token issued by Keycloak."
     });
-
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -106,49 +95,37 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
-
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-
 builder.Services.AddScoped<IInventoryMovementStore>(
     _ => new DapperInventoryMovementStore(connectionString));
-
 builder.Services.AddScoped(
     provider => new RegisterInventoryMovementHandler(
         provider.GetRequiredService<IInventoryMovementStore>(),
         negativeStockPolicy));
-
 builder.Services.AddScoped<ICategoryWriteStore>(
     _ => new DapperCategoryWriteStore(connectionString));
 builder.Services.AddScoped<ICategoryReadStore, EfCategoryReadStore>();
-
 builder.Services.AddScoped<CreateCategoryHandler>();
 builder.Services.AddScoped<UpdateCategoryHandler>();
 builder.Services.AddScoped<DeleteCategoryHandler>();
 builder.Services.AddScoped<GetCategoriesHandler>();
 builder.Services.AddScoped<GetCategoryByIdHandler>();
-
 builder.Services.AddScoped<IProductWriteStore>(
     _ => new DapperProductWriteStore(connectionString));
 builder.Services.AddScoped<IProductReadStore, EfProductReadStore>();
-
 builder.Services.AddScoped<CreateProductHandler>();
 builder.Services.AddScoped<UpdateProductHandler>();
 builder.Services.AddScoped<DeleteProductHandler>();
 builder.Services.AddScoped<GetProductsHandler>();
 builder.Services.AddScoped<GetProductByIdHandler>();
-
-
 var app = builder.Build();
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseExceptionHandler();
-
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

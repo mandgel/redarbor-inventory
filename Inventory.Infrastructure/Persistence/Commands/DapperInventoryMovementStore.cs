@@ -256,18 +256,9 @@ public sealed class DapperInventoryMovementStore : IInventoryMovementStore
             );
             """;
 
-        var createdAt = DateTime.UtcNow;
-
-        var parameters = new
-        {
-            execution.Command.ProductId,
-            MovementType = (byte)execution.Command.MovementType,
-            execution.Command.Quantity,
-            StockAfterMovement = currentStock,
-            execution.Command.IdempotencyKey,
-            execution.RequestFingerprint,
-            CreatedAt = createdAt
-        };
+        var parameters = BuildInsertMovementParameters(
+            execution,
+            currentStock);
 
         var command = new CommandDefinition(
             sql,
@@ -283,6 +274,22 @@ public sealed class DapperInventoryMovementStore : IInventoryMovementStore
             execution,
             currentStock,
             inserted);
+    }
+
+    private static object BuildInsertMovementParameters(
+        InventoryMovementExecution execution,
+        decimal currentStock)
+    {
+        return new
+        {
+            execution.Command.ProductId,
+            MovementType = (byte)execution.Command.MovementType,
+            execution.Command.Quantity,
+            StockAfterMovement = currentStock,
+            execution.Command.IdempotencyKey,
+            execution.RequestFingerprint,
+            CreatedAt = DateTime.UtcNow
+        };
     }
 
     private static InventoryMovementExecutionResult

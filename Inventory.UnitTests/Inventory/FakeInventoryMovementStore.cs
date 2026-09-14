@@ -100,8 +100,4 @@ internal sealed class FakeInventoryMovementStore : IInventoryMovementStore
             CreatedAt = DateTimeOffset.UtcNow
         };
     }
-
-    private sealed record IdempotencyEntry(
-        string Fingerprint,
-        RegisterInventoryMovementResult Result);
 }

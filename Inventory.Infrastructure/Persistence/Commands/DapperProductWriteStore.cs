@@ -76,29 +76,16 @@ public sealed class DapperProductWriteStore : IProductWriteStore
         ProductWriteData data,
         CancellationToken cancellationToken)
     {
-        var categoryIsAvailable = await IsCategoryAvailableAsync(
+        var validationError = await ValidateCategoryAndSkuAsync(
             connection,
             transaction,
-            data.CategoryId,
-            cancellationToken);
-
-        if (!categoryIsAvailable)
-        {
-            return ProductWriteResult.Failed(
-                ProductWriteErrorType.CategoryUnavailable);
-        }
-
-        var skuIsTaken = await IsSkuTakenAsync(
-            connection,
-            transaction,
-            data.Sku,
+            data,
             excludingProductId: null,
             cancellationToken);
 
-        if (skuIsTaken)
+        if (validationError is not null)
         {
-            return ProductWriteResult.Failed(
-                ProductWriteErrorType.DuplicateSku);
+            return ProductWriteResult.Failed(validationError.Value);
         }
 
         var product = await InsertProductAsync(
@@ -133,29 +120,16 @@ public sealed class DapperProductWriteStore : IProductWriteStore
                 ProductWriteErrorType.ProductNotFound);
         }
 
-        var categoryIsAvailable = await IsCategoryAvailableAsync(
+        var validationError = await ValidateCategoryAndSkuAsync(
             connection,
             transaction: null,
-            data.CategoryId,
-            cancellationToken);
-
-        if (!categoryIsAvailable)
-        {
-            return ProductWriteResult.Failed(
-                ProductWriteErrorType.CategoryUnavailable);
-        }
-
-        var skuIsTaken = await IsSkuTakenAsync(
-            connection,
-            transaction: null,
-            data.Sku,
+            data,
             excludingProductId: id,
             cancellationToken);
 
-        if (skuIsTaken)
+        if (validationError is not null)
         {
-            return ProductWriteResult.Failed(
-                ProductWriteErrorType.DuplicateSku);
+            return ProductWriteResult.Failed(validationError.Value);
         }
 
         var product = await ApplyProductUpdateAsync(
@@ -165,6 +139,39 @@ public sealed class DapperProductWriteStore : IProductWriteStore
             cancellationToken);
 
         return ProductWriteResult.Succeeded(product!);
+    }
+
+    private static async Task<ProductWriteErrorType?> ValidateCategoryAndSkuAsync(
+        SqlConnection connection,
+        SqlTransaction? transaction,
+        ProductWriteData data,
+        Guid? excludingProductId,
+        CancellationToken cancellationToken)
+    {
+        var categoryIsAvailable = await IsCategoryAvailableAsync(
+            connection,
+            transaction,
+            data.CategoryId,
+            cancellationToken);
+
+        if (!categoryIsAvailable)
+        {
+            return ProductWriteErrorType.CategoryUnavailable;
+        }
+
+        var skuIsTaken = await IsSkuTakenAsync(
+            connection,
+            transaction,
+            data.Sku,
+            excludingProductId,
+            cancellationToken);
+
+        if (skuIsTaken)
+        {
+            return ProductWriteErrorType.DuplicateSku;
+        }
+
+        return null;
     }
 
     private static async Task<bool> ProductExistsAsync(

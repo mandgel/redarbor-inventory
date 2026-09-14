@@ -1,12 +1,5 @@
 ﻿using Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
 using Inventory.Domain.Inventory;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace Inventory.UnitTests.Inventory;
 
