@@ -40,4 +40,8 @@ internal sealed class FakeInventoryBalanceStore : IInventoryBalanceStore
                 CurrentStock = CurrentStock
             });
     }
+    public void SetCurrentStock(decimal currentStock)
+    {
+        CurrentStock = currentStock;
+    }
 }

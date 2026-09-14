@@ -174,4 +174,42 @@ public sealed class RegisterInventoryMovementHandlerTests
 
         Assert.Equal(6m, store.CurrentStock);
     }
+
+    [Fact]
+    public async Task HandleAsync_WhenMovementFails_ShouldAllowRetryWithSameIdempotencyKey()
+    {
+        var productId = Guid.NewGuid();
+
+        var command = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 5m,
+            IdempotencyKey = "test-key-006"
+        };
+
+        var store = new FakeInventoryBalanceStore(
+            currentStock: 3m);
+
+        var idempotencyStore = new FakeIdempotencyStore();
+
+        var handler = new RegisterInventoryMovementHandler(
+            store,
+            idempotencyStore,
+            NegativeStockPolicy.Reject);
+
+        await Assert.ThrowsAsync<InsufficientStockException>(
+            () => handler.HandleAsync(
+                command,
+                CancellationToken.None));
+
+        store.SetCurrentStock(10m);
+
+        var result = await handler.HandleAsync(
+            command,
+            CancellationToken.None);
+
+        Assert.Equal(5m, result.CurrentStock);
+        Assert.Equal(5m, store.CurrentStock);
+    }
 }
