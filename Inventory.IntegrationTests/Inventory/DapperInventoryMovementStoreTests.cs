@@ -179,6 +179,50 @@ public sealed class DapperInventoryMovementStoreTests
             expectedMovementCount: 1);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_WhenProductDoesNotExist_ShouldReturnProductNotFound()
+    {
+        var productId = Guid.NewGuid();
+
+        var store = new DapperInventoryMovementStore(
+            GetConnectionString());
+
+        var command = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 4m,
+            IdempotencyKey = $"integration-{Guid.NewGuid()}"
+        };
+
+        var execution = new InventoryMovementExecution
+        {
+            Command = command,
+            BalanceChange = new InventoryBalanceChange
+            {
+                ProductId = productId,
+                QuantityChange = -4m,
+                PreventNegativeStock = true
+            },
+            RequestFingerprint =
+                InventoryMovementFingerprint.Create(command)
+        };
+
+        var result = await store.ExecuteAsync(
+            execution,
+            CancellationToken.None);
+
+        Assert.Equal(
+            InventoryMovementExecutionStatus.ProductNotFound,
+            result.Status);
+
+        Assert.Null(result.Result);
+
+        await AssertNoMovementWasCreatedAsync(
+            productId,
+            command.IdempotencyKey);
+    }
+
     private static async Task SeedProductAsync(
     Guid categoryId,
     Guid productId,
@@ -290,6 +334,37 @@ public sealed class DapperInventoryMovementStoreTests
 
         Assert.Equal(expectedStock, currentStock);
         Assert.Equal(expectedMovementCount, movementCount);
+    }
+
+    private static async Task AssertNoMovementWasCreatedAsync(
+        Guid productId,
+        string idempotencyKey)
+    {
+        await using var connection =
+            new SqlConnection(GetConnectionString());
+
+        await connection.OpenAsync();
+
+        var balanceExists =
+            await connection.QuerySingleAsync<int>(
+                """
+            SELECT COUNT(*)
+            FROM InventoryBalances
+            WHERE ProductId = @ProductId;
+            """,
+                new { ProductId = productId });
+
+        var movementCount =
+            await connection.QuerySingleAsync<int>(
+                """
+            SELECT COUNT(*)
+            FROM InventoryMovements
+            WHERE IdempotencyKey = @IdempotencyKey;
+            """,
+                new { IdempotencyKey = idempotencyKey });
+
+        Assert.Equal(0, balanceExists);
+        Assert.Equal(0, movementCount);
     }
 
     private static string GetConnectionString()

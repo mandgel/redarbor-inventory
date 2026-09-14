@@ -14,7 +14,6 @@ public sealed class CategoriesController : ControllerBase
 {
     private const int MinPageSize = 1;
     private const int MaxPageSize = 100;
-
     private readonly CreateCategoryHandler _createHandler;
     private readonly UpdateCategoryHandler _updateHandler;
     private readonly DeleteCategoryHandler _deleteHandler;
@@ -64,7 +63,6 @@ public sealed class CategoriesController : ControllerBase
     {
         var normalizedPage = NormalizePage(page);
         var normalizedPageSize = NormalizePageSize(pageSize);
-
         var query = new GetCategoriesQuery
         {
             Page = normalizedPage,

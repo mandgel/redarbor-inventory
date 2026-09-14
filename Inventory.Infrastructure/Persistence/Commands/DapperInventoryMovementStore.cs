@@ -81,11 +81,11 @@ public sealed class DapperInventoryMovementStore : IInventoryMovementStore
 
         if (currentStock is null)
         {
-            return new InventoryMovementExecutionResult
-            {
-                Status =
-                    InventoryMovementExecutionStatus.InsufficientStock
-            };
+            return await ResolveFailedBalanceChangeAsync(
+                connection,
+                transaction,
+                execution,
+                cancellationToken);
         }
 
         var result = await InsertMovementAsync(
@@ -172,6 +172,54 @@ public sealed class DapperInventoryMovementStore : IInventoryMovementStore
         return await connection
             .QuerySingleOrDefaultAsync<decimal?>(
                 command);
+    }
+
+    private static async Task<InventoryMovementExecutionResult>
+        ResolveFailedBalanceChangeAsync(
+            SqlConnection connection,
+            SqlTransaction transaction,
+            InventoryMovementExecution execution,
+            CancellationToken cancellationToken)
+    {
+        var productExists = await ProductExistsAsync(
+            connection,
+            transaction,
+            execution.BalanceChange.ProductId,
+            cancellationToken);
+
+        var status = productExists
+            ? InventoryMovementExecutionStatus.InsufficientStock
+            : InventoryMovementExecutionStatus.ProductNotFound;
+
+        return new InventoryMovementExecutionResult
+        {
+            Status = status
+        };
+    }
+
+    private static async Task<bool> ProductExistsAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT 1
+            FROM Products
+            WHERE Id = @ProductId
+              AND IsDeleted = 0;
+            """;
+
+        var command = new CommandDefinition(
+            sql,
+            new { ProductId = productId },
+            transaction,
+            cancellationToken: cancellationToken);
+
+        var exists = await connection
+            .QuerySingleOrDefaultAsync<int?>(command);
+
+        return exists is not null;
     }
 
     private static async Task<RegisterInventoryMovementResult>

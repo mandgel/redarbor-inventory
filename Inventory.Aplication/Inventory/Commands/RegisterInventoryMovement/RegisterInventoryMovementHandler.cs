@@ -78,6 +78,8 @@ public sealed class RegisterInventoryMovementHandler
                 throw new InsufficientStockException(),
             InventoryMovementExecutionStatus.IdempotencyConflict =>
                 throw new IdempotencyConflictException(),
+            InventoryMovementExecutionStatus.ProductNotFound =>
+                throw new ProductNotFoundException(),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(executionResult.Status))
         };
