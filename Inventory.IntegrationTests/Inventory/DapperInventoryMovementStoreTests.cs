@@ -61,6 +61,124 @@ public sealed class DapperInventoryMovementStoreTests
             expectedStock: 6m);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_WhenStockIsInsufficient_ShouldNotModifyDatabase()
+    {
+        var productId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+
+        await SeedProductAsync(
+            categoryId,
+            productId,
+            initialStock: 3m);
+
+        var store = new DapperInventoryMovementStore(
+            GetConnectionString());
+
+        var command = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 5m,
+            IdempotencyKey = $"integration-{Guid.NewGuid()}"
+        };
+
+        var execution = new InventoryMovementExecution
+        {
+            Command = command,
+            BalanceChange = new InventoryBalanceChange
+            {
+                ProductId = productId,
+                QuantityChange = -5m,
+                PreventNegativeStock = true
+            },
+            RequestFingerprint =
+                InventoryMovementFingerprint.Create(command)
+        };
+
+        var result = await store.ExecuteAsync(
+            execution,
+            CancellationToken.None);
+
+        Assert.Equal(
+            InventoryMovementExecutionStatus.InsufficientStock,
+            result.Status);
+
+        await AssertDatabaseStateAsync(
+            productId,
+            command.IdempotencyKey,
+            expectedStock: 3m,
+            expectedMovementCount: 0);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenRequestIsRepeated_ShouldReplayWithoutApplyingMovementAgain()
+    {
+        var productId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+
+        await SeedProductAsync(
+            categoryId,
+            productId,
+            initialStock: 10m);
+
+        var store = new DapperInventoryMovementStore(
+            GetConnectionString());
+
+        var command = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 4m,
+            IdempotencyKey = $"integration-{Guid.NewGuid()}"
+        };
+
+        var execution = new InventoryMovementExecution
+        {
+            Command = command,
+            BalanceChange = new InventoryBalanceChange
+            {
+                ProductId = productId,
+                QuantityChange = -4m,
+                PreventNegativeStock = true
+            },
+            RequestFingerprint =
+                InventoryMovementFingerprint.Create(command)
+        };
+
+        var firstResult = await store.ExecuteAsync(
+            execution,
+            CancellationToken.None);
+
+        var secondResult = await store.ExecuteAsync(
+            execution,
+            CancellationToken.None);
+
+        Assert.Equal(
+            InventoryMovementExecutionStatus.Applied,
+            firstResult.Status);
+
+        Assert.Equal(
+            InventoryMovementExecutionStatus.Replayed,
+            secondResult.Status);
+
+        Assert.NotNull(firstResult.Result);
+        Assert.NotNull(secondResult.Result);
+
+        Assert.Equal(
+            firstResult.Result.MovementId,
+            secondResult.Result.MovementId);
+
+        Assert.Equal(6m, firstResult.Result.CurrentStock);
+        Assert.Equal(6m, secondResult.Result.CurrentStock);
+
+        await AssertDatabaseStateAsync(
+            productId,
+            command.IdempotencyKey,
+            expectedStock: 6m,
+            expectedMovementCount: 1);
+    }
+
     private static async Task SeedProductAsync(
     Guid categoryId,
     Guid productId,
@@ -142,9 +260,10 @@ public sealed class DapperInventoryMovementStoreTests
     }
 
     private static async Task AssertDatabaseStateAsync(
-    Guid productId,
-    string idempotencyKey,
-    decimal expectedStock)
+        Guid productId,
+        string idempotencyKey,
+        decimal expectedStock,
+        int expectedMovementCount = 1)
     {
         await using var connection =
             new SqlConnection(GetConnectionString());
@@ -170,8 +289,7 @@ public sealed class DapperInventoryMovementStoreTests
                 new { IdempotencyKey = idempotencyKey });
 
         Assert.Equal(expectedStock, currentStock);
-        Assert.Equal(1, movementCount);
-
+        Assert.Equal(expectedMovementCount, movementCount);
     }
 
     private static string GetConnectionString()
