@@ -10,9 +10,12 @@ namespace Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
 public sealed class RegisterInventoryMovementHandler
 {
     private readonly IInventoryBalanceStore _store;
-    public RegisterInventoryMovementHandler(IInventoryBalanceStore store)
+    private readonly NegativeStockPolicy _negativeStockPolicy;
+    public RegisterInventoryMovementHandler(IInventoryBalanceStore store, 
+        NegativeStockPolicy negativeStockPolicy)
     {
         _store = store;
+        _negativeStockPolicy = negativeStockPolicy;
     }
     public async Task<RegisterInventoryMovementResult> HandleAsync(
         RegisterInventoryMovementCommand command,
@@ -33,14 +36,15 @@ public sealed class RegisterInventoryMovementHandler
             balanceResult.CurrentStock!.Value);
     }
 
-    private static InventoryBalanceChange CreateBalanceChange(
+    private InventoryBalanceChange CreateBalanceChange(
     RegisterInventoryMovementCommand command)
     {
         return new InventoryBalanceChange
         {
             ProductId = command.ProductId,
             QuantityChange = GetQuantityChange(command),
-            PreventNegativeStock = true
+            PreventNegativeStock =
+            _negativeStockPolicy == NegativeStockPolicy.Reject
         };
     }
 

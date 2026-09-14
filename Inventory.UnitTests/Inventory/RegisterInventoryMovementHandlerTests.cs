@@ -27,7 +27,7 @@ public sealed class RegisterInventoryMovementHandlerTests
         };
 
         var store = new FakeInventoryBalanceStore(10m);
-        var handler = new RegisterInventoryMovementHandler(store);
+        var handler = new RegisterInventoryMovementHandler(store, NegativeStockPolicy.Reject);
 
         var result = await handler.HandleAsync(
             command,
@@ -54,7 +54,7 @@ public sealed class RegisterInventoryMovementHandlerTests
         var store = new FakeInventoryBalanceStore(
             currentStock: 3m);
 
-        var handler = new RegisterInventoryMovementHandler(store);
+        var handler = new RegisterInventoryMovementHandler(store, NegativeStockPolicy.Reject);
 
         await Assert.ThrowsAsync<InsufficientStockException>(
             () => handler.HandleAsync(
@@ -62,5 +62,32 @@ public sealed class RegisterInventoryMovementHandlerTests
                 CancellationToken.None));
 
         Assert.Equal(3m, store.CurrentStock);
+    }
+    [Fact]
+    public async Task HandleAsync_WhenNegativeStockIsAllowed_ShouldApplyOutboundMovement()
+    {
+        var productId = Guid.NewGuid();
+
+        var command = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 5m,
+            IdempotencyKey = "test-key-003"
+        };
+
+        var store = new FakeInventoryBalanceStore(
+            currentStock: 3m);
+
+        var handler = new RegisterInventoryMovementHandler(
+            store,
+            NegativeStockPolicy.Allow);
+
+        var result = await handler.HandleAsync(
+            command,
+            CancellationToken.None);
+
+        Assert.Equal(-2m, result.CurrentStock);
+        Assert.Equal(-2m, store.CurrentStock);
     }
 }
