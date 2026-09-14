@@ -132,4 +132,46 @@ public sealed class RegisterInventoryMovementHandlerTests
             firstResult.MovementId,
             secondResult.MovementId);
     }
+    [Fact]
+    public async Task HandleAsync_WhenIdempotencyKeyIsReusedWithDifferentPayload_ShouldThrowIdempotencyConflictException()
+    {
+        var productId = Guid.NewGuid();
+
+        var firstCommand = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 4m,
+            IdempotencyKey = "test-key-005"
+        };
+
+        var secondCommand = new RegisterInventoryMovementCommand
+        {
+            ProductId = productId,
+            MovementType = InventoryMovementType.Outbound,
+            Quantity = 2m,
+            IdempotencyKey = "test-key-005"
+        };
+
+        var store = new FakeInventoryBalanceStore(
+            currentStock: 10m);
+
+        var idempotencyStore = new FakeIdempotencyStore();
+
+        var handler = new RegisterInventoryMovementHandler(
+            store,
+            idempotencyStore,
+            NegativeStockPolicy.Reject);
+
+        await handler.HandleAsync(
+            firstCommand,
+            CancellationToken.None);
+
+        await Assert.ThrowsAsync<IdempotencyConflictException>(
+            () => handler.HandleAsync(
+                secondCommand,
+                CancellationToken.None));
+
+        Assert.Equal(6m, store.CurrentStock);
+    }
 }

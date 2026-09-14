@@ -1,24 +1,25 @@
 ﻿using Inventory.Application.Inventory.Commands.RegisterInventoryMovement;
 
+namespace Inventory.UnitTests.Inventory;
+
 internal sealed class FakeIdempotencyStore : IIdempotencyStore
 {
-    private readonly Dictionary<string, RegisterInventoryMovementResult> _results = [];
+    private readonly Dictionary<string, IdempotencyRecord> _records = [];
 
-    public Task<RegisterInventoryMovementResult?> GetAsync(
+    public Task<IdempotencyRecord?> GetAsync(
         string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        _results.TryGetValue(idempotencyKey, out var result);
+        _records.TryGetValue(idempotencyKey, out var record);
 
-        return Task.FromResult(result);
+        return Task.FromResult(record);
     }
 
     public Task SaveAsync(
-        string idempotencyKey,
-        RegisterInventoryMovementResult result,
+        IdempotencyRecord record,
         CancellationToken cancellationToken)
     {
-        _results[idempotencyKey] = result;
+        _records[record.IdempotencyKey] = record;
 
         return Task.CompletedTask;
     }

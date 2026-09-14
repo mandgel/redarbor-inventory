@@ -2,12 +2,11 @@
 
 public interface IIdempotencyStore
 {
-    Task<RegisterInventoryMovementResult?> GetAsync(
+    Task<IdempotencyRecord?> GetAsync(
         string idempotencyKey,
         CancellationToken cancellationToken);
 
     Task SaveAsync(
-        string idempotencyKey,
-        RegisterInventoryMovementResult result,
+        IdempotencyRecord record,
         CancellationToken cancellationToken);
 }
